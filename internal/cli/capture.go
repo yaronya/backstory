@@ -106,7 +106,7 @@ func runCapture(repoPath, author string) error {
 	}
 
 	var input string
-	tty, ttyErr := os.Open("/dev/tty")
+	tty, ttyErr := openTTY()
 	if ttyErr == nil {
 		defer tty.Close()
 		fmt.Print("\nToggle numbers to deselect, or press Enter to confirm: ")

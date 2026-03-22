@@ -71,19 +71,20 @@ func (r *Repo) CommitAndPush(file, msg string) error {
 }
 
 func (r *Repo) PushWithRebase(maxRetries int) error {
+	var lastErr error
 	for i := 0; i <= maxRetries; i++ {
 		_, err := r.git("push")
 		if err == nil {
 			return nil
 		}
-		if i == maxRetries {
-			return err
-		}
-		if _, rebaseErr := r.git("pull", "--rebase"); rebaseErr != nil {
-			return rebaseErr
+		lastErr = err
+		if i < maxRetries {
+			if _, rebaseErr := r.git("pull", "--rebase"); rebaseErr != nil {
+				return rebaseErr
+			}
 		}
 	}
-	return nil
+	return lastErr
 }
 
 func (r *Repo) GetRemoteURL() (string, error) {

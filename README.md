@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">Backstory</h1>
-  <p align="center">Shared team memory for AI coding agents</p>
+  <p align="center"><strong>The missing link between product decisions and code</strong></p>
   <p align="center">
     <a href="https://github.com/yaronya/backstory/actions"><img src="https://github.com/yaronya/backstory/workflows/CI/badge.svg" alt="CI"></a>
     <a href="https://goreportcard.com/report/github.com/yaronya/backstory"><img src="https://goreportcard.com/badge/github.com/yaronya/backstory" alt="Go Report Card"></a>
@@ -12,93 +12,111 @@
 
 ---
 
-Your codebase captures **what** was built. Backstory captures **why**.
+Product managers make decisions that shape what gets built. Engineers make decisions that shape how it gets built. Today, these live in different worlds — Slack threads, Linear tickets, PR descriptions, people's heads — and they go stale the moment they're written.
 
-Backstory automatically extracts the reasoning behind code decisions during AI coding sessions and shares them across your team. When a teammate's agent starts a session, it already knows what you decided — and why.
+**Backstory keeps them in sync.** It captures the *why* behind every decision — product and technical — and makes it available to everyone's AI coding agent, automatically.
 
-**The Waze model:** you connect to get better routes (your agent gets smarter). You contribute passively by coding (decisions are captured automatically). Nobody "shares" anything — it just happens.
+> A PM decides "no bulk operations in v1 — too risky for launch" in a Linear ticket.
+>
+> A developer starts working on the payment service. Their AI agent already knows: *don't build bulk support, here's why, and here's the ticket.*
+>
+> Another developer finishes a session where they chose SQS over direct API calls for rate-limit reasons. That reasoning is captured and shared — without them writing a single doc.
+>
+> Next week, a new hire picks up a related task. Their agent has the full backstory.
 
-## How It Works
+## The Problem
+
+Every AI coding session starts from zero. Your agent doesn't know:
+- Why the PM chose Stripe over Adyen
+- Why the team rejected bulk operations for v1
+- Why SQS was picked instead of direct invocation
+- What constraints and tradeoffs shaped the current architecture
+
+This context exists somewhere — scattered across Slack, Linear, Google Docs, and people's memories. But it never reaches the AI agent that's writing the code.
+
+**The result:** agents make decisions in a vacuum, engineers re-explain the same context every session, and product intent gets lost in translation.
+
+## How Backstory Fixes This
 
 ```
-  Developer A's session                    Developer B's session
-  ┌─────────────────────┐                  ┌─────────────────────┐
-  │ Claude Code          │                  │ Claude Code          │
-  │                      │                  │                      │
-  │ "I chose SQS over    │   ┌──────────┐  │ Agent already knows: │
-  │  direct invocation   │──▶│ Backstory │──│ "SQS was chosen for  │
-  │  because of rate     │   │ Decisions │  │  rate limit reasons" │
-  │  limits at 100 rps"  │   │   Repo    │  │                      │
-  └─────────────────────┘   └──────────┘  └─────────────────────┘
-                                 ▲
-                            ┌────┴────┐
-                            │ PM adds │
-                            │ product │
-                            │ context │
-                            └─────────┘
+  ┌──────────────────────────────────────────────────────────────┐
+  │                     Backstory Decisions Repo                  │
+  │                                                               │
+  │  Product decisions              Technical decisions            │
+  │  ┌─────────────────┐           ┌──────────────────────────┐  │
+  │  │ "No bulk ops v1  │           │ "Chose SQS over direct   │  │
+  │  │  — too risky for │           │  invocation — vendor API  │  │
+  │  │  launch"         │           │  rate-limits at 100 rps"  │  │
+  │  │                  │           │                           │  │
+  │  │  by: PM David    │           │  by: Sarah (auto-captured │  │
+  │  │  via: Linear     │           │  from coding session)     │  │
+  │  └─────────────────┘           └──────────────────────────┘  │
+  └───────────────┬───────────────────────────┬──────────────────┘
+                  │                           │
+         ┌────────▼─────────┐       ┌─────────▼────────┐
+         │  PM adds product  │       │  Dev's session    │
+         │  decisions via     │       │  auto-captures    │
+         │  CLI or future     │       │  technical        │
+         │  macOS app         │       │  decisions         │
+         └──────────────────┘       └──────────────────┘
+                  │                           │
+                  ▼                           ▼
+         ┌─────────────────────────────────────────────┐
+         │         Every agent session gets both        │
+         │    product context AND technical context     │
+         │         before a single line is written      │
+         └─────────────────────────────────────────────┘
 ```
 
-1. **Session starts** — Backstory pulls the latest decisions and injects relevant context into your agent
-2. **You code** — Your agent makes decisions with full team context
-3. **Session ends** — Backstory extracts decisions and asks you to confirm sharing
-4. **Teammate starts** — Their agent already knows what you decided
+### For Product Managers
 
-## Features
+- Add product decisions in plain language: *"We chose Stripe for APAC because of multi-currency support"*
+- Decisions flow directly into developer AI agents — no handoff, no lost context
+- See what technical decisions the team made and why
+- Product intent stays connected to the code, even months later
+- No new tools to learn — works through the CLI today, native macOS app coming soon
 
-- **Auto-capture** — Extracts decisions from coding sessions via Claude API
-- **Code-anchored** — Decisions are linked to specific directories, files, or services
-- **Full-text search** — SQLite FTS5 index for fast keyword search
-- **Linear integration** — Pulls issue context when working on a ticket
-- **Pending queue** — Offline-resilient; queues decisions when network is unavailable
-- **Staleness detection** — Flags decisions when their anchored code changes
-- **Git-native** — Decisions repo is just a git repo with markdown files
+### For Engineers
 
-## Install
+- Your AI agent starts every session with the full backstory — product constraints, team decisions, architectural context
+- Decisions are captured automatically from your coding sessions — no docs to write
+- Search across all team decisions: `backstory search "payment processing"`
+- New team members onboard faster — their agent has the institutional knowledge from day one
 
-**From source:**
+### For Teams
 
-```bash
-go install github.com/yaronya/backstory/cmd/backstory@latest
-```
-
-**Clone and build:**
-
-```bash
-git clone https://github.com/yaronya/backstory.git
-cd backstory
-make build
-```
-
-**Requirements:** Go 1.26+, Git
+- Product and technical decisions live in one place, version-controlled and searchable
+- No more "why was this built this way?" — the answer is in the backstory
+- Knowledge survives team changes — when someone leaves, their decisions stay
+- Works like Waze: you benefit by connecting, contribute by working. Nobody "shares" — it just happens.
 
 ## Quick Start
 
 ```bash
-# 1. Create a new decisions repo
+# Install
+go install github.com/yaronya/backstory/cmd/backstory@latest
+
+# Create a decisions repo for your team
 backstory init --path my-team-decisions
 
-# 2. Or join an existing team's repo
+# Or join an existing team's repo
 backstory init --connect git@github.com:my-team/decisions.git
 
-# 3. Set the environment variable (add to your shell profile)
+# Set the environment variable (add to your shell profile)
 export BACKSTORY_REPO=/path/to/my-team-decisions
 
-# 4. Add your API keys
+# Add your API keys
 cat > /path/to/my-team-decisions/.backstory/config.local.yml << 'EOF'
 claude_api_key: sk-ant-...
 linear_api_key: lin_api_...
 EOF
-
-# 5. Build the search index
-backstory index
-
-# 6. Search decisions
-backstory search "payment processing"
 ```
+
+**Requirements:** Go 1.26+, Git
 
 ## Claude Code Integration
 
-Add hooks to `.claude/settings.json`:
+Add hooks to `.claude/settings.json` and every session gets automatic context:
 
 ```json
 {
@@ -119,26 +137,81 @@ Add hooks to `.claude/settings.json`:
 }
 ```
 
-When a session starts, Backstory syncs the latest decisions and injects relevant context. When a session ends, it extracts decisions from the transcript and prompts you to share them.
+**That's it.** Sessions start with context, end with captured decisions. No manual steps.
+
+## Adding Product Decisions
+
+PMs (or anyone) can add decisions directly:
+
+```bash
+backstory add \
+  --type product \
+  --anchor payments \
+  --linear ENG-892 \
+  --title "No bulk operations in v1" \
+  "Too risky for initial launch. Single-item operations only. Revisit for v2."
+```
+
+This decision immediately appears in every developer's next session when they work on payments.
+
+## What Gets Captured
+
+Backstory distinguishes between two types of decisions:
+
+**Product decisions** — the *what* and *why* from a product perspective:
+- "We chose Stripe over Adyen for APAC because of multi-currency support"
+- "No bulk operations in v1 — too risky for launch"
+- "Email-only notifications for launch, push notifications in v2"
+
+**Technical decisions** — the *how* and *why* from an engineering perspective:
+- "Chose SQS over direct invocation because vendor API rate-limits at 100 rps"
+- "Added exponential backoff for Stripe webhooks — can delay up to 5 minutes"
+- "Used SES templates instead of inline HTML for email maintainability"
+
+Both types are anchored to code paths and Linear issues, so the right context surfaces at the right time.
+
+## Decisions Repo
+
+Backstory stores everything in a dedicated git repo — separate from your code repos. Just markdown files with YAML frontmatter, version-controlled and human-readable.
+
+```
+my-team-decisions/
+├── product/
+│   └── payments/
+│       ├── 2026-03-20-stripe-over-adyen.md
+│       └── 2026-03-22-no-bulk-ops-v1.md
+├── technical/
+│   └── backend/services/payment-service/
+│       ├── 2026-03-19-sqs-over-direct-invocation.md
+│       └── 2026-03-22-exponential-backoff-webhooks.md
+└── .backstory/
+    └── config.yml
+```
+
+**Why a separate repo?**
+- No branch protection blocking fast capture — decisions push directly to main
+- PMs get access without needing code repo permissions
+- One decisions repo serves multiple code repos
+- Different lifecycle — decisions are append-mostly, code has branches and releases
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `backstory init` | Create a new decisions repo or connect to an existing one |
+| `backstory add` | Manually add a product or technical decision |
+| `backstory search <query>` | Full-text search across all decisions |
+| `backstory status` | Show decision counts, stale items, and pending queue |
 | `backstory sync` | Pull latest, process pending decisions, rebuild index |
-| `backstory index` | Rebuild the local FTS5 search index |
-| `backstory search <query>` | Search decisions by keyword |
-| `backstory inject` | Output relevant decisions as XML context (used by hooks) |
+| `backstory index` | Rebuild the local search index |
+| `backstory inject` | Output relevant context as XML (used by session hooks) |
 | `backstory capture` | Extract decisions from a session transcript (used by hooks) |
-| `backstory add` | Manually add a decision |
-| `backstory status` | Show repo status, decision counts, and pending items |
-| `backstory stale` | Detect and mark stale decisions |
-| `backstory edit <file>` | Edit a decision file and commit the change |
+| `backstory stale` | Detect and mark decisions whose anchored code has changed |
+| `backstory edit <file>` | Edit a decision and commit the change |
 
 ## Configuration
 
-**Team settings** (`.backstory/config.yml` — committed):
+**Team settings** (`.backstory/config.yml` — committed, shared):
 
 ```yaml
 team: my-team
@@ -164,79 +237,39 @@ claude_api_key: sk-ant-...
 linear_api_key: lin_api_...
 ```
 
-## Decisions Repo Structure
-
-```
-my-team-decisions/
-├── product/
-│   └── payments/
-│       ├── 2026-03-20-stripe-over-adyen.md
-│       └── 2026-03-22-no-bulk-ops-v1.md
-├── technical/
-│   └── backend/services/payment-service/
-│       ├── 2026-03-19-sqs-over-direct-invocation.md
-│       └── 2026-03-22-exponential-backoff-webhooks.md
-├── .backstory/
-│   ├── config.yml
-│   ├── config.local.yml  (gitignored)
-│   └── index.db           (gitignored)
-└── README.md
-```
-
-Each decision file is markdown with YAML frontmatter:
-
-```markdown
----
-type: technical
-date: 2026-03-19
-author: sarah
-anchor: backend/services/payment-service/
-linear_issue: ENG-892
-stale: false
----
-
-# Chose SQS over direct invocation for vendor API
-
-The vendor API rate-limits at 100 req/s. Direct invocation from the Lambda
-would hit this limit during peak hours. SQS provides natural backpressure
-and retry semantics without custom rate-limiting code.
-
-Alternatives considered: Direct invocation with client-side rate limiting
-— rejected because it adds complexity and doesn't handle concurrency spikes.
-```
-
 ## Architecture
 
 ```
-CLI (Go binary)
-├── SessionStart hook → sync + inject relevant decisions
-├── Stop hook         → capture decisions from session
-├── search            → FTS5 full-text search
-├── add               → manual decision entry
-└── stale             → staleness detection
+CLI (Go, single binary)
+├── SessionStart hook → sync decisions + inject relevant context
+├── Stop hook         → extract decisions from transcript
+├── add / search      → manual interaction
+└── stale             → detect outdated decisions
 
 Storage
-├── Git repo          → decisions as markdown (source of truth)
-└── SQLite + FTS5     → local search index (disposable cache)
+├── Git repo          → markdown decisions (source of truth)
+└── SQLite + FTS5     → local search index (disposable, rebuilt on sync)
 
 Integrations
-├── Claude API        → decision extraction from transcripts
-└── Linear API        → pull issue context on demand
+├── Claude API        → extracts decisions from session transcripts
+└── Linear API        → pulls issue context when working on tickets
 ```
+
+## Roadmap
+
+- [ ] **macOS app** — Claude-powered chat interface for PMs to browse, search, and add decisions without touching the terminal
+- [ ] **Semantic search** — embedding-based search for "find decisions about error handling" style queries
+- [ ] **Slack integration** — pull context from linked Slack threads
+- [ ] **Staleness detection v2** — detect when anchored code changes significantly, not just deleted
+- [ ] **Agent-agnostic** — MCP server for Cursor, Copilot, and other AI coding tools
 
 ## Contributing
 
 Contributions are welcome. Please open an issue to discuss changes before submitting a PR.
 
 ```bash
-# Run tests
-make test
-
-# Build
-make build
-
-# Run
-./bin/backstory --help
+make test    # Run tests
+make build   # Build binary
 ```
 
 ## License

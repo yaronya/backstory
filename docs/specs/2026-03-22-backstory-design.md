@@ -45,6 +45,15 @@ Linear/Slack Integration (pull-based)
 
 A dedicated git repository, separate from code repos. This is a prerequisite for Backstory to work.
 
+### Access control
+
+The decisions repo is a standard git repo. Access is managed through the git hosting platform (GitHub/GitLab):
+- All team members (devs + PMs) get write access
+- No branch protection on main — direct pushes required for frictionless capture
+- `backstory init` sets up the repo with appropriate team permissions via `gh` CLI
+- Authentication uses the developer's existing git credentials (SSH keys or HTTPS tokens)
+- The macOS app uses the same git credentials configured on the machine
+
 ### Why separate
 
 - **Branch protection kills the flow.** Code repos typically block direct pushes to main. The decisions repo must allow direct pushes for frictionless capture.
@@ -69,7 +78,8 @@ backstory-decisions/
 │   └── env0/services/notification-service/
 │       └── 2026-03-21-ses-template-approach.md
 ├── .backstory/
-│   ├── config.yml        ← linked code repos, team settings
+│   ├── config.yml        ← linked code repos, team settings (committed)
+│   ├── config.local.yml  ← local overrides, API keys (gitignored)
 │   └── index.db          ← local SQLite (gitignored)
 └── README.md
 ```
@@ -82,7 +92,6 @@ type: technical | product
 date: 2026-03-19
 author: sarah
 anchor: env0/services/payment-service/
-anchor_granularity: directory | file | function
 linear_issue: ENG-892
 stale: false
 ---
@@ -98,6 +107,66 @@ Considered alternatives:
   adds complexity and doesn't handle Lambda concurrency spikes
 - SNS + SQS fan-out — overkill for a single consumer
 ```
+
+### Config schema
+
+**`.backstory/config.yml`** (committed — shared team settings):
+```yaml
+team: my-team
+repos:
+  - name: env0
+    url: git@github.com:env0/env0.git
+  - name: frontend
+    url: git@github.com:env0/frontend.git
+linear:
+  team_key: ENG
+inject:
+  max_decisions: 10
+  max_tokens: 2000
+staleness:
+  archive_after_months: 6
+  change_threshold: 0.5
+```
+
+**`.backstory/config.local.yml`** (gitignored — per-developer):
+```yaml
+claude_api_key: sk-ant-...
+linear_api_key: lin_api_...
+slack_token: xoxb-...          # optional, deferred to post-MVP
+```
+
+### Multi-repo mapping
+
+The `repos` list in config maps repo names to URLs. When `backstory inject` runs:
+1. Reads the current directory's git remote URL
+2. Matches it against the `repos` list to determine the repo name
+3. Queries the index for decisions anchored under that repo name (e.g., `env0/services/payment-service/`)
+
+This allows a single decisions repo to serve multiple code repos. The anchor path format is always `<repo-name>/<path-within-repo>`.
+
+### Context injection format
+
+`backstory inject` outputs a structured block that Claude Code's SessionStart hook prepends to the session:
+
+```
+<backstory>
+<decisions>
+<decision type="technical" date="2026-03-19" author="sarah" anchor="env0/services/payment-service/">
+Chose SQS over direct invocation for vendor API. The vendor API rate-limits at 100 req/s.
+SQS provides natural backpressure and retry semantics.
+</decision>
+<decision type="product" date="2026-03-22" author="pm-david" anchor="payments" linear="ENG-892">
+No bulk operations in v1. Too risky for initial launch. Single-item operations only.
+</decision>
+</decisions>
+<linear issue="ENG-1234">
+Title: Add Stripe webhook retry logic
+Description: Implement exponential backoff for failed Stripe webhook deliveries...
+</linear>
+</backstory>
+```
+
+XML tags are used because Claude handles structured XML context well. The block is kept under the configured `max_tokens` limit (default 2000).
 
 ## CLI Tool
 
@@ -121,12 +190,14 @@ Backstory integrates via hooks in Claude Code's `settings.json`:
 
 **SessionStart hook:**
 1. `backstory sync` — pulls latest from decisions repo
-2. `backstory inject` — reads current code repo path, queries SQLite index for decisions anchored to relevant paths, outputs them as context injected into the session
+2. Checks pending queue for unconfirmed decisions from previous sessions
+3. `backstory inject` — reads current code repo path, queries SQLite index for decisions anchored to relevant paths, outputs them as context injected into the session
 
 **Stop hook:**
-1. Receives session summary
+1. Receives session summary from Claude Code
 2. Calls Claude API to extract candidate decisions (the hard AI problem)
-3. Presents quick confirmation prompt to the developer:
+3. Saves candidates to a local pending queue (`~/.backstory/pending/`)
+4. Presents confirmation prompt in the terminal (blocking, 30-second timeout):
 
 ```
 Backstory captured from this session:
@@ -137,9 +208,28 @@ Backstory captured from this session:
 [Share 1,2 to team] [Edit] [Dismiss all]
 ```
 
-4. Confirmed items are written as markdown files and committed/pushed to the decisions repo
+5. Confirmed items are written as markdown files and committed/pushed to the decisions repo
+6. On timeout: items stay in pending queue, surfaced on next `backstory sync` or session start
 
 **Default is "share"** — items come pre-checked. Developer only acts to remove.
+
+**Failure modes:**
+- Claude API unavailable: session transcript saved locally to `~/.backstory/pending/` for extraction on next sync
+- Git push conflict: automatic `pull --rebase` and retry (up to 3 attempts). If still failing, items stay in pending queue
+- No network: all operations queued locally, pushed on next `backstory sync`
+- Terminal closed before confirmation: pending items surfaced on next session start
+
+### Injection relevance algorithm
+
+`backstory inject` must select the right decisions from potentially hundreds. The algorithm:
+
+1. **Anchor match** — find decisions anchored to paths that are ancestors or descendants of the current working directory (e.g., working in `services/payment-service/handler.ts` matches anchors `services/payment-service/`, `services/payment-service/handler.ts`)
+2. **Linear issue match** — if the current branch matches `eng-XXXX-*`, include decisions linked to that issue
+3. **Recency boost** — newer decisions rank higher (exponential decay, half-life 30 days)
+4. **Retrieval frequency** — decisions retrieved often by other team members rank higher (signals ongoing relevance)
+5. **Exclude stale** — decisions with `stale: true` are excluded unless explicitly searched
+
+Results are capped at `max_decisions` (default 10) and `max_tokens` (default 2000). If the relevant set exceeds the budget, lower-ranked decisions are dropped.
 
 ### Local SQLite Index
 
@@ -175,9 +265,10 @@ Auto-detected by the extraction agent, defaulting to directory/service level:
 ### Staleness detection
 
 - CLI watches code repos for significant changes to anchored paths (via git diff on sync)
-- When anchored code changes substantially, the decision is flagged as potentially stale
-- Decisions not retrieved by any agent in N months are auto-archived
-- Decisions retrieved and then contradicted by agent actions are flagged for review
+- "Significant change" = file deleted, renamed, or >50% of lines changed (measured by git diff stat)
+- When anchored code changes substantially, the decision's `stale` frontmatter flag is set to `true`
+- Decisions not retrieved by any agent in 6 months are auto-archived (moved to `archive/` directory)
+- Stale decisions are excluded from `inject` by default but still searchable
 
 ## macOS App
 
@@ -245,6 +336,13 @@ Two types of entries, reflecting the two audiences:
 
 Both types surface in the agent's context when relevant. A developer working on the payment service sees both "PM decided no bulk ops in v1 (ENG-892)" and "Sarah chose SQS here because of rate limits."
 
+### Editing and retracting decisions
+
+- Devs can edit/retract via `backstory edit <id>` or by editing the markdown file directly
+- PMs can edit/retract via the macOS app chat: *"Update the Stripe decision — we've switched back to Adyen"*
+- Edits are git commits — full history is preserved
+- Retracted decisions are moved to `archive/` (not deleted) to preserve audit trail
+
 ## Target Users
 
 ### Phase 1: Small startup teams (3-8 devs, 1-2 PMs)
@@ -269,12 +367,12 @@ Both types surface in the agent's context when relevant. A developer working on 
 
 | Component | Technology | Rationale |
 |---|---|---|
-| CLI | Go | Fast startup (~5ms), low memory (~10MB), single binary distribution |
-| Local index | SQLite + FTS5 + sqlite-vec | Zero infrastructure, sub-ms queries, disposable cache |
-| Decision extraction | Claude API | Best at understanding session context and extracting structured decisions |
-| macOS app | Swift/SwiftUI | Native performance, natural fit for macOS |
+| CLI | Go | Fast startup (~5ms), low memory (~10-15MB), single binary distribution |
+| Local index | SQLite + FTS5 | Zero infrastructure, sub-ms queries, disposable cache. sqlite-vec deferred to post-MVP |
+| Decision extraction | Claude API (Haiku for cost) | Best at understanding session context and extracting structured decisions |
+| macOS app (post-MVP) | Swift/SwiftUI | Native performance, natural fit for macOS |
 | Decisions repo | Git + Markdown | Version controlled, inspectable, zero infrastructure |
-| Linear/Slack | REST APIs (pull-based) | On-demand fetching, no webhook infrastructure |
+| Linear | REST API (pull-based) | On-demand fetching, no webhook infrastructure |
 
 ## Installation & Onboarding
 
@@ -289,10 +387,27 @@ backstory init
 
 One-time setup, ~2 minutes. The macOS app is a separate download for PMs.
 
+## MVP Scope
+
+**In scope:**
+- Go CLI with all commands (init, sync, search, index, inject, capture, status, edit)
+- Claude Code hooks (SessionStart + Stop)
+- Decisions repo template with config schema
+- Local SQLite index with FTS5
+- Linear integration (pull-based)
+- Decision extraction via Claude API
+- Pending queue for offline/failure resilience
+
+**Deferred to post-MVP:**
+- macOS app for PMs (PMs can use the CLI or edit markdown directly for now)
+- Semantic search via embeddings (FTS5 keyword search is sufficient for v1)
+- Slack integration (Linear issues carry most PM context)
+- Agent-agnostic support / MCP server
+- Auto-archive staleness (manual `backstory status` flags stale decisions)
+
 ## Open Questions
 
-1. **Embedding model for semantic search** — local model (e.g., all-MiniLM) vs. Claude API embeddings? Tradeoff: local is free but less accurate; API is better but adds latency and cost to indexing.
-2. **Conflict resolution** — two devs push decisions at the same time. Git handles this for different files, but what about the index? Rebuild on every pull?
-3. **Decision extraction quality** — the core AI challenge. How to reliably distinguish real decisions from debugging noise, temporary workarounds, and irrelevant session activity. Needs prompt engineering and possibly fine-tuning.
-4. **macOS app scope** — MVP could be a simple menubar app with a chat window, or a full-featured app with browse/search/timeline views.
-5. **Pricing model** — open source CLI + paid macOS app? Fully open source with paid team features? Cloud-hosted option for teams that don't want to self-manage?
+1. **Decision extraction prompt engineering** — the core AI challenge. How to reliably distinguish real decisions from debugging noise. Needs iteration with real session transcripts. Consider: what does Claude Code's Stop hook actually provide as session data?
+2. **macOS app architecture** — menubar app with chat window vs. full app with browse/search/timeline. Depends on PM feedback after CLI MVP ships.
+3. **Pricing model** — open source CLI + paid macOS app? Fully open source with paid team features? Cloud-hosted option for teams that don't want to self-manage?
+4. **Embedding strategy** — when semantic search is needed post-MVP: local model (increases binary size to ~80MB+) vs. Claude API embeddings (requires network for indexing). FTS5 buys time to decide.

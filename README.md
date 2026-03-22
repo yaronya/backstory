@@ -38,34 +38,44 @@ This context exists somewhere — scattered across Slack, Linear, Google Docs, a
 
 ## How Backstory Fixes This
 
-```
-  ┌──────────────────────────────────────────────────────────────┐
-  │                     Backstory Decisions Repo                  │
-  │                                                               │
-  │  Product decisions              Technical decisions            │
-  │  ┌─────────────────┐           ┌──────────────────────────┐  │
-  │  │ "No bulk ops v1  │           │ "Chose SQS over direct   │  │
-  │  │  — too risky for │           │  invocation — vendor API  │  │
-  │  │  launch"         │           │  rate-limits at 100 rps"  │  │
-  │  │                  │           │                           │  │
-  │  │  by: PM David    │           │  by: Sarah (auto-captured │  │
-  │  │  via: Linear     │           │  from coding session)     │  │
-  │  └─────────────────┘           └──────────────────────────┘  │
-  └───────────────┬───────────────────────────┬──────────────────┘
-                  │                           │
-         ┌────────▼─────────┐       ┌─────────▼────────┐
-         │  PM adds product  │       │  Dev's session    │
-         │  decisions via     │       │  auto-captures    │
-         │  CLI or future     │       │  technical        │
-         │  macOS app         │       │  decisions         │
-         └──────────────────┘       └──────────────────┘
-                  │                           │
-                  ▼                           ▼
-         ┌─────────────────────────────────────────────┐
-         │         Every agent session gets both        │
-         │    product context AND technical context     │
-         │         before a single line is written      │
-         └─────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph inputs [" "]
+        direction LR
+        PM["🧑‍💼 Product Manager\nAdds product decisions\nvia CLI or macOS app"]
+        DEV_A["👩‍💻 Developer A\nCoding session auto-captures\ntechnical decisions"]
+        LINEAR["📋 Linear\nIssue context pulled\non demand"]
+    end
+
+    subgraph repo ["Backstory Decisions Repo"]
+        direction LR
+        PRODUCT["**Product Decisions**\n\n_No bulk ops in v1 — too risky_\n_Stripe over Adyen for APAC_\n_Email-only notifications for launch_"]
+        TECHNICAL["**Technical Decisions**\n\n_SQS over direct invocation (rate limits)_\n_Exponential backoff for webhooks_\n_SES templates for email_"]
+    end
+
+    subgraph output [" "]
+        DEV_B["👨‍💻 Developer B starts a session\nAgent already has full context —\nproduct constraints + technical reasoning"]
+        NEW["🆕 New hire starts a task\nAgent has institutional knowledge\nfrom day one"]
+    end
+
+    PM -->|writes| PRODUCT
+    DEV_A -->|auto-captured| TECHNICAL
+    LINEAR -.->|enriches| repo
+    PRODUCT --> DEV_B
+    TECHNICAL --> DEV_B
+    PRODUCT --> NEW
+    TECHNICAL --> NEW
+
+    style repo fill:#1a1a2e,stroke:#e94560,stroke-width:2px,color:#fff
+    style PRODUCT fill:#0f3460,stroke:#e94560,color:#fff
+    style TECHNICAL fill:#0f3460,stroke:#16213e,color:#fff
+    style PM fill:#533483,stroke:#533483,color:#fff
+    style DEV_A fill:#2b2d42,stroke:#2b2d42,color:#fff
+    style LINEAR fill:#2b2d42,stroke:#2b2d42,color:#fff
+    style DEV_B fill:#006d77,stroke:#006d77,color:#fff
+    style NEW fill:#006d77,stroke:#006d77,color:#fff
+    style inputs fill:none,stroke:none
+    style output fill:none,stroke:none
 ```
 
 ### For Product Managers
@@ -239,20 +249,47 @@ linear_api_key: lin_api_...
 
 ## Architecture
 
-```
-CLI (Go, single binary)
-├── SessionStart hook → sync decisions + inject relevant context
-├── Stop hook         → extract decisions from transcript
-├── add / search      → manual interaction
-└── stale             → detect outdated decisions
+```mermaid
+flowchart LR
+    subgraph hooks ["Claude Code Hooks"]
+        START["**SessionStart**\nSync + inject context"]
+        STOP["**Stop**\nCapture decisions"]
+    end
 
-Storage
-├── Git repo          → markdown decisions (source of truth)
-└── SQLite + FTS5     → local search index (disposable, rebuilt on sync)
+    subgraph cli ["CLI Commands"]
+        ADD["add / search\nstale / status"]
+    end
 
-Integrations
-├── Claude API        → extracts decisions from session transcripts
-└── Linear API        → pulls issue context when working on tickets
+    subgraph storage ["Storage"]
+        GIT[("Git Repo\n_(source of truth)_\nMarkdown files")]
+        SQLITE[("SQLite + FTS5\n_(local cache)_\nSearch index")]
+    end
+
+    subgraph apis ["Integrations"]
+        CLAUDE["Claude API\nDecision extraction"]
+        LINEARAPI["Linear API\nIssue context"]
+    end
+
+    START --> GIT
+    START --> SQLITE
+    START --> LINEARAPI
+    STOP --> CLAUDE
+    CLAUDE --> GIT
+    ADD --> GIT
+    ADD --> SQLITE
+    GIT <--> SQLITE
+
+    style hooks fill:#1a1a2e,stroke:#e94560,stroke-width:2px,color:#fff
+    style cli fill:#1a1a2e,stroke:#533483,stroke-width:2px,color:#fff
+    style storage fill:#0f3460,stroke:#16213e,stroke-width:2px,color:#fff
+    style apis fill:#2b2d42,stroke:#2b2d42,stroke-width:2px,color:#fff
+    style START fill:#e94560,stroke:#e94560,color:#fff
+    style STOP fill:#e94560,stroke:#e94560,color:#fff
+    style ADD fill:#533483,stroke:#533483,color:#fff
+    style GIT fill:#006d77,stroke:#006d77,color:#fff
+    style SQLITE fill:#006d77,stroke:#006d77,color:#fff
+    style CLAUDE fill:#2b2d42,stroke:#e94560,color:#fff
+    style LINEARAPI fill:#2b2d42,stroke:#e94560,color:#fff
 ```
 
 ## Roadmap

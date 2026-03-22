@@ -48,7 +48,7 @@ func runCapture(repoPath, author string) error {
 	}
 
 	if cfg.ClaudeAPIKey == "" {
-		return fmt.Errorf("claude_api_key not set in config")
+		return fmt.Errorf("claude_api_key not set in config (note: developers don't need this — the Claude Code plugin uses backstory save instead)")
 	}
 
 	transcriptBytes, err := io.ReadAll(os.Stdin)

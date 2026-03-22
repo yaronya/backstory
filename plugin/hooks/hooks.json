@@ -6,7 +6,7 @@
   },
   {
     "event": "Stop",
-    "type": "command",
-    "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop.sh"
+    "type": "prompt",
+    "prompt": "Before ending this session, review the conversation for any meaningful architectural or technical decisions that were made. A decision is a deliberate choice where alternatives existed — like choosing a technology, library, pattern, or approach over others.\n\nDo NOT include: bug fixes, variable renames, formatting changes, or routine implementation.\n\nIf you find decisions, use the backstory_save MCP tool to save them. Pass a JSON array where each object has: title (string), body (string explaining reasoning), anchor (string - code path like 'repo/services/payment-service/'), type ('technical' or 'product'), alternatives_considered (string or empty).\n\nIf no meaningful decisions were made in this session, do nothing."
   }
 ]

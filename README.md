@@ -116,9 +116,9 @@ backstory init --connect git@github.com:my-team/decisions.git
 # Set the environment variable (add to your shell profile)
 export BACKSTORY_REPO=/path/to/my-team-decisions
 
-# Add your API keys
+# Optional: API keys (only needed for macOS app or backstory capture fallback)
 cat > /path/to/my-team-decisions/.backstory/config.local.yml << 'EOF'
-claude_api_key: sk-ant-...
+claude_api_key: sk-ant-...   # Not needed if using Claude Code plugin
 linear_api_key: lin_api_...
 EOF
 ```
@@ -127,7 +127,14 @@ EOF
 
 ## Claude Code Integration
 
-Add hooks to `.claude/settings.json` and every session gets automatic context:
+Install the [Backstory plugin](plugin/) for Claude Code and every session gets automatic context:
+
+- **Session start:** Syncs latest decisions and injects relevant context
+- **Session end:** Claude Code itself reviews the conversation for decisions and saves them via the `backstory_save` MCP tool
+
+**No Claude API key needed for developers.** The Stop hook is prompt-based — Claude Code extracts its own decisions directly, no separate API call required.
+
+The plugin configures hooks automatically. If you prefer manual setup, add to `.claude/settings.json`:
 
 ```json
 {
@@ -140,15 +147,13 @@ Add hooks to `.claude/settings.json` and every session gets automatic context:
     ],
     "Stop": [
       {
-        "type": "command",
-        "command": "backstory capture"
+        "type": "prompt",
+        "prompt": "Before ending this session, review the conversation for meaningful architectural or technical decisions. If you find any, use the backstory_save MCP tool to save them."
       }
     ]
   }
 }
 ```
-
-**That's it.** Sessions start with context, end with captured decisions. No manual steps.
 
 ## Adding Product Decisions
 
@@ -216,7 +221,8 @@ my-team-decisions/
 | `backstory sync` | Pull latest, process pending decisions, rebuild index |
 | `backstory index` | Rebuild the local search index |
 | `backstory inject` | Output relevant context as XML (used by session hooks) |
-| `backstory capture` | Extract decisions from a session transcript (used by hooks) |
+| `backstory capture` | Extract decisions from a session transcript (requires API key) |
+| `backstory save` | Save pre-extracted decisions from JSON on stdin (used by Claude Code plugin) |
 | `backstory stale` | Detect and mark decisions whose anchored code has changed |
 | `backstory edit <file>` | Edit a decision and commit the change |
 
@@ -254,11 +260,11 @@ linear_api_key: lin_api_...
 flowchart LR
     subgraph hooks ["Claude Code Hooks"]
         START["**SessionStart**\nSync + inject context"]
-        STOP["**Stop**\nCapture decisions"]
+        STOP["**Stop** _(prompt-based)_\nClaude extracts decisions\nand calls backstory_save"]
     end
 
     subgraph cli ["CLI Commands"]
-        ADD["add / search\nstale / status"]
+        ADD["add / save / search\nstale / status"]
     end
 
     subgraph storage ["Storage"]
@@ -267,15 +273,13 @@ flowchart LR
     end
 
     subgraph apis ["Integrations"]
-        CLAUDE["Claude API\nDecision extraction"]
         LINEARAPI["Linear API\nIssue context"]
     end
 
     START --> GIT
     START --> SQLITE
     START --> LINEARAPI
-    STOP --> CLAUDE
-    CLAUDE --> GIT
+    STOP --> GIT
     ADD --> GIT
     ADD --> SQLITE
     GIT <--> SQLITE
@@ -289,7 +293,6 @@ flowchart LR
     style ADD fill:#533483,stroke:#533483,color:#fff
     style GIT fill:#006d77,stroke:#006d77,color:#fff
     style SQLITE fill:#006d77,stroke:#006d77,color:#fff
-    style CLAUDE fill:#2b2d42,stroke:#e94560,color:#fff
     style LINEARAPI fill:#2b2d42,stroke:#e94560,color:#fff
 ```
 

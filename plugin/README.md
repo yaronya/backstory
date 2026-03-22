@@ -9,16 +9,13 @@ Shared team memory — auto-captures the reasoning behind code decisions and mak
    export BACKSTORY_REPO=/path/to/your-team-decisions
    ```
 
-2. Add your API key:
-   ```
-   echo "claude_api_key: sk-ant-..." >> $BACKSTORY_REPO/.backstory/config.local.yml
-   ```
+That's it. No API key needed — the plugin uses Claude Code itself to extract decisions.
 
 ## What it does
 
 - **Session start:** Syncs latest decisions and injects relevant context
 - **During session:** Search and add decisions via MCP tools
-- **Session end:** Auto-captures decisions from your transcript
+- **Session end:** Claude Code reviews the conversation and saves any decisions via the `backstory_save` tool
 
 ## MCP Tools
 
@@ -26,4 +23,5 @@ Shared team memory — auto-captures the reasoning behind code decisions and mak
 |------|-------------|
 | `backstory_search` | Search team decisions by keyword |
 | `backstory_add` | Add a new team decision |
+| `backstory_save` | Save extracted decisions to the team repo |
 | `backstory_status` | Show repo status and counts |

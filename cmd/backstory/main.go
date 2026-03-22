@@ -20,6 +20,7 @@ func main() {
 		cli.NewSearchCmd(),
 		cli.NewInjectCmd(),
 		cli.NewCaptureCmd(),
+		cli.NewSaveCmd(),
 		cli.NewStatusCmd(),
 		cli.NewEditCmd(),
 		cli.NewAddCmd(),

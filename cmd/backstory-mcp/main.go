@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/extract"
 	"github.com/yaronya/backstory/internal/repo"
 	"github.com/yaronya/backstory/internal/store"
 )
@@ -34,6 +35,12 @@ func main() {
 		mcp.WithString("anchor", mcp.Required(), mcp.Description("Code path or feature area")),
 		mcp.WithString("linear_issue", mcp.Description("Linear issue ID (optional)")),
 	), handleAdd)
+
+	s.AddTool(mcp.NewTool("backstory_save",
+		mcp.WithDescription("Save extracted decisions to the team repo. Pass a JSON array of decision objects."),
+		mcp.WithString("decisions_json", mcp.Required(), mcp.Description("JSON array of decisions with title, body, anchor, type fields")),
+		mcp.WithString("author", mcp.Description("Author name (default: $USER)")),
+	), handleSave)
 
 	s.AddTool(mcp.NewTool("backstory_status",
 		mcp.WithDescription("Show decisions repo status - total decisions, stale count"),
@@ -158,6 +165,67 @@ func handleAdd(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolRes
 	}
 
 	return mcp.NewToolResultText(fmt.Sprintf("Decision added: %s", filePath)), nil
+}
+
+func handleSave(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	decisionsJSON := request.GetString("decisions_json", "")
+	if decisionsJSON == "" {
+		return mcp.NewToolResultError("decisions_json is required"), nil
+	}
+
+	rp, err := repoPath()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	decisions, err := extract.ParseExtractionResponse(decisionsJSON)
+	if err != nil {
+		return mcp.NewToolResultError("failed to parse decisions JSON: " + err.Error()), nil
+	}
+
+	if len(decisions) == 0 {
+		return mcp.NewToolResultText("No decisions to save."), nil
+	}
+
+	author := request.GetString("author", "")
+	if author == "" {
+		author = os.Getenv("USER")
+		if author == "" {
+			author = "unknown"
+		}
+	}
+
+	for _, d := range decisions {
+		d.Author = author
+	}
+
+	var saved []string
+	for _, d := range decisions {
+		dir := filepath.Join(rp, d.Type)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return mcp.NewToolResultError("failed to create directory: " + err.Error()), nil
+		}
+		filePath := filepath.Join(dir, d.Filename())
+		if err := d.WriteToFile(filePath); err != nil {
+			return mcp.NewToolResultError("failed to write decision: " + err.Error()), nil
+		}
+		saved = append(saved, fmt.Sprintf("%s/%s", d.Type, d.Filename()))
+	}
+
+	r := repo.Open(rp)
+	if err := r.CommitAll("backstory: save decisions"); err != nil {
+		return mcp.NewToolResultError("failed to commit: " + err.Error()), nil
+	}
+
+	if err := r.PushWithRebase(3); err != nil {
+		return mcp.NewToolResultError("failed to push: " + err.Error()), nil
+	}
+
+	output := fmt.Sprintf("Saved %d decision(s):\n", len(saved))
+	for _, s := range saved {
+		output += fmt.Sprintf("  %s\n", s)
+	}
+	return mcp.NewToolResultText(output), nil
 }
 
 func handleStatus(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {

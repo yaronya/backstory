@@ -1,0 +1,16 @@
+User asked me to implement webhook handling for Stripe payments.
+
+I looked at the existing code in services/payment-service/handler.ts.
+
+The vendor API rate-limits at 100 requests per second. I decided to use SQS
+instead of direct invocation to handle backpressure naturally. I considered
+direct invocation with client-side rate limiting but rejected it because it
+adds complexity and doesn't handle Lambda concurrency spikes well.
+
+I also added exponential backoff for Stripe webhook retries since webhooks
+can be delayed up to 5 minutes according to Stripe docs.
+
+I spent 20 minutes debugging a flaky test that was caused by a timing issue
+in the test setup. Fixed it by adding a proper wait condition.
+
+I renamed a variable from resp to webhookResponse for clarity.

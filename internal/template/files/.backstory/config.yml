@@ -1,0 +1,10 @@
+team: ""
+repos: []
+linear:
+  team_key: ""
+inject:
+  max_decisions: 10
+  max_tokens: 2000
+staleness:
+  archive_after_months: 6
+  change_threshold: 0.5

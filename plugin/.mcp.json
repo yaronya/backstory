@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "backstory": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/backstory-mcp",
+      "env": {
+        "BACKSTORY_REPO": "${BACKSTORY_REPO}"
+      }
+    }
+  }
+}

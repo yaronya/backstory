@@ -1,0 +1,6 @@
+{
+  "name": "backstory",
+  "description": "Shared team memory — auto-captures decisions and injects context from your team's decision history",
+  "version": "1.0.0",
+  "auto_discover": true
+}

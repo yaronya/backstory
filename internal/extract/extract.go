@@ -9,7 +9,7 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
-	"github.com/backstory-team/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/decision"
 )
 
 type extractedDecision struct {
@@ -21,7 +21,9 @@ type extractedDecision struct {
 }
 
 type Extractor struct {
-	client *anthropic.Client
+	client    *anthropic.Client
+	model     string
+	maxTokens int
 }
 
 func BuildExtractionPrompt(transcript, repoName, workDir string) string {
@@ -79,17 +81,17 @@ func ParseExtractionResponse(response string) ([]*decision.Decision, error) {
 	return decisions, nil
 }
 
-func NewExtractor(apiKey string) *Extractor {
+func NewExtractor(apiKey, model string, maxTokens int) *Extractor {
 	client := anthropic.NewClient(option.WithAPIKey(apiKey))
-	return &Extractor{client: &client}
+	return &Extractor{client: &client, model: model, maxTokens: maxTokens}
 }
 
 func (e *Extractor) Extract(ctx context.Context, transcript, repoName, workDir, author string) ([]*decision.Decision, error) {
 	prompt := BuildExtractionPrompt(transcript, repoName, workDir)
 
 	msg, err := e.client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:     "claude-haiku-4-5-20251001",
-		MaxTokens: 4096,
+		Model:     anthropic.Model(e.model),
+		MaxTokens: int64(e.maxTokens),
 		Messages: []anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
 		},

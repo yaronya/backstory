@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/backstory-team/backstory/internal/config"
-	"github.com/backstory-team/backstory/internal/decision"
-	"github.com/backstory-team/backstory/internal/store"
+	"github.com/yaronya/backstory/internal/config"
+	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/store"
 )
 
 type Engine struct {

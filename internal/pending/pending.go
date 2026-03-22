@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/backstory-team/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/decision"
 )
 
 type Queue struct {

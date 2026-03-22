@@ -9,8 +9,9 @@ import (
 )
 
 type Repo struct {
-	Name string `yaml:"name"`
-	URL  string `yaml:"url"`
+	Name      string `yaml:"name"`
+	URL       string `yaml:"url"`
+	LocalPath string `yaml:"local_path"`
 }
 
 type LinearConfig struct {
@@ -20,6 +21,11 @@ type LinearConfig struct {
 type InjectConfig struct {
 	MaxDecisions int `yaml:"max_decisions"`
 	MaxTokens    int `yaml:"max_tokens"`
+}
+
+type ExtractConfig struct {
+	Model     string `yaml:"model"`
+	MaxTokens int    `yaml:"max_tokens"`
 }
 
 type StalenessConfig struct {
@@ -32,6 +38,7 @@ type Config struct {
 	Repos     []Repo          `yaml:"repos"`
 	Linear    LinearConfig    `yaml:"linear"`
 	Inject    InjectConfig    `yaml:"inject"`
+	Extract   ExtractConfig   `yaml:"extract"`
 	Staleness StalenessConfig `yaml:"staleness"`
 
 	ClaudeAPIKey string `yaml:"claude_api_key"`
@@ -45,6 +52,12 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Inject.MaxTokens == 0 {
 		cfg.Inject.MaxTokens = 2000
+	}
+	if cfg.Extract.Model == "" {
+		cfg.Extract.Model = "claude-haiku-4-5-20251001"
+	}
+	if cfg.Extract.MaxTokens == 0 {
+		cfg.Extract.MaxTokens = 4096
 	}
 	if cfg.Staleness.ArchiveAfterMonths == 0 {
 		cfg.Staleness.ArchiveAfterMonths = 6

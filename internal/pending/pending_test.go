@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/backstory-team/backstory/internal/decision"
-	"github.com/backstory-team/backstory/internal/pending"
+	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/pending"
 )
 
 func TestSaveAndLoad(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/backstory-team/backstory/internal/repo"
+	"github.com/yaronya/backstory/internal/repo"
 	"github.com/spf13/cobra"
 )
 

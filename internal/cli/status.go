@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/backstory-team/backstory/internal/decision"
-	"github.com/backstory-team/backstory/internal/pending"
+	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/pending"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ func runStatus(repoPath string) error {
 	total := 0
 	stale := 0
 
-	for _, dir := range []string{"product", "technical"} {
+	for _, dir := range []string{decision.TypeProduct, decision.TypeTechnical} {
 		dirPath := filepath.Join(repoPath, dir)
 		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 			continue

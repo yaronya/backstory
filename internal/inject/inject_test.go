@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/backstory-team/backstory/internal/config"
-	"github.com/backstory-team/backstory/internal/decision"
-	"github.com/backstory-team/backstory/internal/inject"
-	"github.com/backstory-team/backstory/internal/store"
+	"github.com/yaronya/backstory/internal/config"
+	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/inject"
+	"github.com/yaronya/backstory/internal/store"
 )
 
 func openTestStore(t *testing.T) *store.Store {

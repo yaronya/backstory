@@ -1,12 +1,12 @@
 package decision_test
 
 import (
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/backstory-team/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/decision"
 )
 
 func TestParseFromFile_TechnicalDecision(t *testing.T) {
@@ -159,8 +159,7 @@ func TestGenerateFilename_SpecialChars(t *testing.T) {
 	if got == "" {
 		t.Error("expected non-empty filename")
 	}
-
-	info, err := os.Stat(got)
-	_ = info
-	_ = err
+	if !strings.HasSuffix(got, ".md") {
+		t.Errorf("expected filename to end with .md, got %q", got)
+	}
 }

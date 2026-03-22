@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/backstory-team/backstory/internal/store"
+	"github.com/yaronya/backstory/internal/store"
 	"github.com/spf13/cobra"
 )
 

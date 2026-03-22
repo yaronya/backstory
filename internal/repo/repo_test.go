@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/backstory-team/backstory/internal/repo"
+	"github.com/yaronya/backstory/internal/repo"
 )
 
 func initBareRemote(t *testing.T) string {

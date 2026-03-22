@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/backstory-team/backstory/internal/linear"
+	"github.com/yaronya/backstory/internal/linear"
 )
 
 func TestParseIssueResponse(t *testing.T) {

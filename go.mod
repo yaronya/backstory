@@ -1,4 +1,4 @@
-module github.com/backstory-team/backstory
+module github.com/yaronya/backstory
 
 go 1.26.1
 

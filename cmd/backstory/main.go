@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/backstory-team/backstory/internal/cli"
+	"github.com/yaronya/backstory/internal/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +22,8 @@ func main() {
 		cli.NewCaptureCmd(),
 		cli.NewStatusCmd(),
 		cli.NewEditCmd(),
+		cli.NewAddCmd(),
+		cli.NewStaleCmd(),
 	)
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

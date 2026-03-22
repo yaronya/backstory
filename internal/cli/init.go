@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/backstory-team/backstory/internal/repo"
-	"github.com/backstory-team/backstory/internal/template"
+	"github.com/yaronya/backstory/internal/repo"
+	"github.com/yaronya/backstory/internal/template"
 	"github.com/spf13/cobra"
 )
 

@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/backstory-team/backstory/internal/decision"
-	"github.com/backstory-team/backstory/internal/pending"
-	"github.com/backstory-team/backstory/internal/repo"
-	"github.com/backstory-team/backstory/internal/store"
+	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/pending"
+	"github.com/yaronya/backstory/internal/repo"
+	"github.com/yaronya/backstory/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -110,7 +110,7 @@ func rebuildIndex(repoPath string) error {
 	defer s.Close()
 
 	count := 0
-	for _, dir := range []string{"product", "technical"} {
+	for _, dir := range []string{decision.TypeProduct, decision.TypeTechnical} {
 		dirPath := filepath.Join(repoPath, dir)
 		if _, statErr := os.Stat(dirPath); os.IsNotExist(statErr) {
 			continue

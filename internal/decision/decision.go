@@ -25,6 +25,11 @@ type Decision struct {
 	FilePath    string    `yaml:"-" json:"file_path"`
 }
 
+const (
+	TypeTechnical = "technical"
+	TypeProduct   = "product"
+)
+
 var multiHyphen = regexp.MustCompile(`-{2,}`)
 
 func ParseFromFile(path string) (*Decision, error) {

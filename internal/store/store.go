@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/backstory-team/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/decision"
 	_ "modernc.org/sqlite"
 )
 
@@ -153,6 +153,32 @@ func (s *Store) Search(query string) ([]*decision.Decision, error) {
 	}
 	defer rows.Close()
 	return scanDecisions(rows)
+}
+
+func (s *Store) GetAnchors() ([]string, error) {
+	rows, err := s.db.Query(`
+		SELECT DISTINCT anchor
+		FROM decisions
+		WHERE stale = 0`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var anchors []string
+	for rows.Next() {
+		var anchor string
+		if err := rows.Scan(&anchor); err != nil {
+			return nil, err
+		}
+		anchors = append(anchors, anchor)
+	}
+	return anchors, rows.Err()
+}
+
+func (s *Store) MarkStale(anchor string) error {
+	_, err := s.db.Exec(`UPDATE decisions SET stale = 1 WHERE anchor = ?`, anchor)
+	return err
 }
 
 func scanDecisions(rows *sql.Rows) ([]*decision.Decision, error) {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/backstory-team/backstory/internal/decision"
-	"github.com/backstory-team/backstory/internal/store"
+	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/store"
 )
 
 func newTestStore(t *testing.T) *store.Store {

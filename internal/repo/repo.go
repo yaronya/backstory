@@ -10,6 +10,20 @@ type Repo struct {
 	Path string
 }
 
+func NormalizeGitURL(url string) string {
+	url = strings.TrimSpace(url)
+	url = strings.TrimSuffix(url, ".git")
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimPrefix(url, "git@")
+	url = strings.ReplaceAll(url, ":", "/")
+	return strings.ToLower(url)
+}
+
+func MatchesRemote(actual, configured string) bool {
+	return NormalizeGitURL(actual) == NormalizeGitURL(configured)
+}
+
 func Clone(url, dest string) (*Repo, error) {
 	cmd := exec.Command("git", "clone", url, dest)
 	if out, err := cmd.CombinedOutput(); err != nil {

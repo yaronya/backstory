@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/backstory-team/backstory/internal/config"
-	"github.com/backstory-team/backstory/internal/decision"
-	"github.com/backstory-team/backstory/internal/extract"
-	"github.com/backstory-team/backstory/internal/pending"
-	"github.com/backstory-team/backstory/internal/repo"
+	"github.com/yaronya/backstory/internal/config"
+	"github.com/yaronya/backstory/internal/decision"
+	"github.com/yaronya/backstory/internal/extract"
+	"github.com/yaronya/backstory/internal/pending"
+	"github.com/yaronya/backstory/internal/repo"
 	"github.com/spf13/cobra"
 )
 
@@ -70,7 +70,7 @@ func runCapture(repoPath, transcriptPath, author string) error {
 
 	repoName := ""
 	for _, r := range cfg.Repos {
-		if matchesRemote(remoteURL, r.URL) {
+		if repo.MatchesRemote(remoteURL, r.URL) {
 			repoName = r.Name
 			break
 		}
@@ -88,7 +88,7 @@ func runCapture(repoPath, transcriptPath, author string) error {
 	}
 
 	fmt.Println("Extracting decisions from transcript...")
-	extractor := extract.NewExtractor(cfg.ClaudeAPIKey)
+	extractor := extract.NewExtractor(cfg.ClaudeAPIKey, cfg.Extract.Model, cfg.Extract.MaxTokens)
 	decisions, err := extractor.Extract(context.Background(), string(transcript), repoName, workDir, author)
 	if err != nil {
 		fmt.Printf("Extraction failed: %v\n", err)
@@ -186,7 +186,7 @@ func saveToPending(repoPath, transcript, author string) error {
 	d := &decision.Decision{
 		Title:   "Raw transcript (extraction failed)",
 		Body:    transcript,
-		Type:    "technical",
+		Type:    decision.TypeTechnical,
 		Author:  author,
 		DateStr: time.Now().Format("2006-01-02"),
 		Date:    time.Now(),

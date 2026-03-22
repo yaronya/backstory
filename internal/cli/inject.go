@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/backstory-team/backstory/internal/config"
-	"github.com/backstory-team/backstory/internal/inject"
-	"github.com/backstory-team/backstory/internal/linear"
-	"github.com/backstory-team/backstory/internal/repo"
-	"github.com/backstory-team/backstory/internal/store"
+	"github.com/yaronya/backstory/internal/config"
+	"github.com/yaronya/backstory/internal/inject"
+	"github.com/yaronya/backstory/internal/linear"
+	"github.com/yaronya/backstory/internal/repo"
+	"github.com/yaronya/backstory/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +56,7 @@ func runInject() error {
 
 	repoName := ""
 	for _, r := range cfg.Repos {
-		if matchesRemote(remoteURL, r.URL) {
+		if repo.MatchesRemote(remoteURL, r.URL) {
 			repoName = r.Name
 			break
 		}
@@ -111,20 +110,4 @@ func runInject() error {
 
 	fmt.Print(output)
 	return nil
-}
-
-func matchesRemote(actual, configured string) bool {
-	actual = normalizeGitURL(actual)
-	configured = normalizeGitURL(configured)
-	return actual == configured
-}
-
-func normalizeGitURL(url string) string {
-	url = strings.TrimSpace(url)
-	url = strings.TrimSuffix(url, ".git")
-	url = strings.TrimPrefix(url, "https://")
-	url = strings.TrimPrefix(url, "http://")
-	url = strings.TrimPrefix(url, "git@")
-	url = strings.ReplaceAll(url, ":", "/")
-	return strings.ToLower(url)
 }

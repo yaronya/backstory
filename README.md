@@ -8,7 +8,7 @@ Backstory automatically captures the reasoning behind code decisions during AI c
 
 Build from source:
 
-    go install github.com/backstory-team/backstory/cmd/backstory@latest
+    go install github.com/yaronya/backstory/cmd/backstory@latest
 
 Or clone and build:
 

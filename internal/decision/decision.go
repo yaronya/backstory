@@ -101,6 +101,10 @@ func (d *Decision) Filename() string {
 	slug = multiHyphen.ReplaceAllString(slug, "-")
 	slug = strings.Trim(slug, "-")
 
+	if len(slug) > 80 {
+		slug = strings.TrimRight(slug[:80], "-")
+	}
+
 	return d.DateStr + "-" + slug + ".md"
 }
 

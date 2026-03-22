@@ -147,6 +147,23 @@ func TestGenerateFilename(t *testing.T) {
 	}
 }
 
+func TestGenerateFilename_LongTitle(t *testing.T) {
+	d := &decision.Decision{
+		Date:    time.Date(2026, 3, 19, 0, 0, 0, 0, time.UTC),
+		DateStr: "2026-03-19",
+		Title:   strings.Repeat("a", 500),
+	}
+
+	got := d.Filename()
+
+	if len(got) >= 100 {
+		t.Errorf("expected filename under 100 characters, got %d: %q", len(got), got)
+	}
+	if !strings.HasSuffix(got, ".md") {
+		t.Errorf("expected filename to end with .md, got %q", got)
+	}
+}
+
 func TestGenerateFilename_SpecialChars(t *testing.T) {
 	d := &decision.Decision{
 		Date:    time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC),

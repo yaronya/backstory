@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -119,16 +121,16 @@ func (c *Client) FetchIssue(ctx context.Context, identifier string) (*Issue, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("linear API returned status %d", resp.StatusCode)
-	}
-
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(resp.Body); err != nil {
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return nil, fmt.Errorf("reading response: %w", err)
 	}
 
-	issue, err := ParseIssueResponse(buf.Bytes())
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("linear API status %d: %s", resp.StatusCode, respBody)
+	}
+
+	issue, err := ParseIssueResponse(respBody)
 	if err != nil {
 		return nil, err
 	}
@@ -141,12 +143,12 @@ func (c *Client) FetchIssue(ctx context.Context, identifier string) (*Issue, err
 func FormatIssueXML(issue *Issue) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("<linear issue=%q>\n", issue.Identifier))
-	sb.WriteString(fmt.Sprintf("Title: %s\n", issue.Title))
-	sb.WriteString(fmt.Sprintf("Description: %s\n", issue.Description))
+	sb.WriteString(fmt.Sprintf("Title: %s\n", html.EscapeString(issue.Title)))
+	sb.WriteString(fmt.Sprintf("Description: %s\n", html.EscapeString(issue.Description)))
 	if len(issue.Comments) > 0 {
 		sb.WriteString("Discussion:\n")
 		for _, c := range issue.Comments {
-			sb.WriteString(fmt.Sprintf("%s: %s\n", c.UserName, c.Body))
+			sb.WriteString(fmt.Sprintf("%s: %s\n", html.EscapeString(c.UserName), html.EscapeString(c.Body)))
 		}
 	}
 	sb.WriteString("</linear>")

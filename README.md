@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="assets/logo.svg" width="120" alt="Backstory Logo">
   <h1 align="center">Backstory</h1>
   <p align="center"><strong>The missing link between product decisions and code</strong></p>
   <p align="center">

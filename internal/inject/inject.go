@@ -2,6 +2,7 @@ package inject
 
 import (
 	"fmt"
+	"html"
 	"math"
 	"sort"
 	"strings"
@@ -100,7 +101,7 @@ func formatXML(decisions []*decision.Decision) string {
 			sb.WriteString(fmt.Sprintf(" linear=%q", d.LinearIssue))
 		}
 		sb.WriteString(">\n")
-		content := d.Title + ". " + d.Body
+		content := html.EscapeString(d.Title + ". " + d.Body)
 		sb.WriteString(content)
 		sb.WriteString("\n</decision>\n")
 	}

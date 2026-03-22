@@ -234,6 +234,40 @@ func TestRecencyBoost(t *testing.T) {
 	}
 }
 
+func TestInjectXMLEscaping(t *testing.T) {
+	s := openTestStore(t)
+
+	d := makeDecision(
+		"/docs/special.md",
+		"technical",
+		"2026-03-22",
+		"env0/services/payment-service/",
+		"",
+		"Decision with <tags>",
+		"Body with <angle> brackets & 'quotes' and \"double quotes\".",
+		false,
+	)
+	if err := s.Upsert(d); err != nil {
+		t.Fatalf("Upsert failed: %v", err)
+	}
+
+	engine := inject.New(s, defaultConfig())
+	output, err := engine.Generate("env0/services/payment-service/", "")
+	if err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	if strings.Contains(output, "<tags>") {
+		t.Errorf("expected <tags> to be escaped, but found raw in output")
+	}
+	if !strings.Contains(output, "&lt;") {
+		t.Errorf("expected output to contain &lt; (escaped <), got: %s", output)
+	}
+	if !strings.Contains(output, "&amp;") {
+		t.Errorf("expected output to contain &amp; (escaped &), got: %s", output)
+	}
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a

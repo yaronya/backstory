@@ -100,11 +100,18 @@ func (e *Extractor) Extract(ctx context.Context, transcript, repoName, workDir, 
 		return nil, fmt.Errorf("calling Claude API: %w", err)
 	}
 
-	if len(msg.Content) == 0 {
-		return nil, fmt.Errorf("empty response from Claude API")
+	var responseText string
+	for _, block := range msg.Content {
+		if block.Type == "text" {
+			responseText = block.Text
+			break
+		}
+	}
+	if responseText == "" {
+		return nil, fmt.Errorf("no text in Claude API response")
 	}
 
-	text := msg.Content[0].AsText().Text
+	text := responseText
 
 	decisions, err := ParseExtractionResponse(text)
 	if err != nil {

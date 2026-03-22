@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +19,6 @@ import (
 )
 
 func NewCaptureCmd() *cobra.Command {
-	var transcriptPath string
 	var author string
 
 	cmd := &cobra.Command{
@@ -29,23 +29,19 @@ func NewCaptureCmd() *cobra.Command {
 			if repoPath == "" {
 				return fmt.Errorf("BACKSTORY_REPO not set")
 			}
-			if transcriptPath == "" {
-				return fmt.Errorf("--transcript flag is required")
-			}
 			if author == "" {
 				author = os.Getenv("USER")
 			}
-			return runCapture(repoPath, transcriptPath, author)
+			return runCapture(repoPath, author)
 		},
 	}
 
-	cmd.Flags().StringVar(&transcriptPath, "transcript", "", "Path to session transcript file")
 	cmd.Flags().StringVar(&author, "author", "", "Author name (default: $USER)")
 
 	return cmd
 }
 
-func runCapture(repoPath, transcriptPath, author string) error {
+func runCapture(repoPath, author string) error {
 	cfg, err := config.Load(repoPath)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
@@ -55,10 +51,11 @@ func runCapture(repoPath, transcriptPath, author string) error {
 		return fmt.Errorf("claude_api_key not set in config")
 	}
 
-	transcript, err := os.ReadFile(transcriptPath)
+	transcriptBytes, err := io.ReadAll(os.Stdin)
 	if err != nil {
-		return fmt.Errorf("reading transcript: %w", err)
+		return fmt.Errorf("reading transcript from stdin: %w", err)
 	}
+	transcript := transcriptBytes
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -108,23 +105,27 @@ func runCapture(repoPath, transcriptPath, author string) error {
 		fmt.Printf("  [x] %d. [%s] %s\n", i+1, d.Type, d.Title)
 	}
 
-	fmt.Print("\nToggle numbers to deselect, or press Enter to confirm: ")
-
-	inputCh := make(chan string, 1)
-	go func() {
-		reader := bufio.NewReader(os.Stdin)
-		line, _ := reader.ReadString('\n')
-		inputCh <- strings.TrimSpace(line)
-	}()
-
 	var input string
-	select {
-	case input = <-inputCh:
-	case <-time.After(30 * time.Second):
-		fmt.Println("\nTimeout waiting for input. Saving to pending queue...")
-		homeDir, _ := os.UserHomeDir()
-		q := pending.New(filepath.Join(homeDir, ".backstory", "pending"))
-		return q.Save(decisions)
+	tty, ttyErr := os.Open("/dev/tty")
+	if ttyErr == nil {
+		defer tty.Close()
+		fmt.Print("\nToggle numbers to deselect, or press Enter to confirm: ")
+
+		inputCh := make(chan string, 1)
+		go func() {
+			reader := bufio.NewReader(tty)
+			line, _ := reader.ReadString('\n')
+			inputCh <- strings.TrimSpace(line)
+		}()
+
+		select {
+		case input = <-inputCh:
+		case <-time.After(30 * time.Second):
+			fmt.Println("\nTimeout waiting for input. Saving to pending queue...")
+			homeDir, _ := os.UserHomeDir()
+			q := pending.New(filepath.Join(homeDir, ".backstory", "pending"))
+			return q.Save(decisions)
+		}
 	}
 
 	if input != "" {

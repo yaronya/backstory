@@ -1,7 +1,9 @@
 package pending_test
 
 import (
+	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -131,4 +133,31 @@ func TestRoundTripPreservesAllFields(t *testing.T) {
 	}
 
 	_ = os.Remove(dir)
+}
+
+func TestConcurrentAppendDoesNotCorrupt(t *testing.T) {
+	dir := t.TempDir()
+	q := pending.New(dir)
+
+	const goroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func(n int) {
+			defer wg.Done()
+			d := &decision.Decision{Title: fmt.Sprintf("decision-%d", n)}
+			if err := q.Append([]*decision.Decision{d}); err != nil {
+				t.Errorf("Append error: %v", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	decisions, err := q.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(decisions) != goroutines {
+		t.Errorf("expected %d decisions after concurrent appends, got %d", goroutines, len(decisions))
+	}
 }

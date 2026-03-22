@@ -15,7 +15,8 @@ import (
 )
 
 func NewSyncCmd() *cobra.Command {
-	return &cobra.Command{
+	var yes bool
+	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Sync decisions repo with remote",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -23,12 +24,22 @@ func NewSyncCmd() *cobra.Command {
 			if repoPath == "" {
 				return fmt.Errorf("BACKSTORY_REPO not set")
 			}
-			return runSync(repoPath)
+			return runSync(repoPath, yes)
 		},
 	}
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Auto-confirm all pending items without prompting")
+	return cmd
 }
 
-func runSync(repoPath string) error {
+func isTTY() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+func runSync(repoPath string, yes bool) error {
 	r := repo.Open(repoPath)
 
 	fmt.Println("Pulling latest changes...")
@@ -53,13 +64,17 @@ func runSync(repoPath string) error {
 			for i, d := range items {
 				fmt.Printf("  %d. [%s] %s (by %s)\n", i+1, d.Type, d.Title, d.Author)
 			}
-			fmt.Print("\nCommit and push these decisions? [Y/n] ")
 
-			reader := bufio.NewReader(os.Stdin)
-			answer, _ := reader.ReadString('\n')
-			answer = strings.TrimSpace(strings.ToLower(answer))
+			confirmed := yes || !isTTY()
+			if !confirmed {
+				fmt.Print("\nCommit and push these decisions? [Y/n] ")
+				reader := bufio.NewReader(os.Stdin)
+				answer, _ := reader.ReadString('\n')
+				answer = strings.TrimSpace(strings.ToLower(answer))
+				confirmed = answer == "" || answer == "y" || answer == "yes"
+			}
 
-			if answer == "" || answer == "y" || answer == "yes" {
+			if confirmed {
 				for _, d := range items {
 					dir := filepath.Join(repoPath, d.Type)
 					if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {

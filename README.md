@@ -57,7 +57,7 @@ Add hooks to your Claude Code settings (`.claude/settings.json`):
         "Stop": [
           {
             "type": "command",
-            "command": "backstory capture --transcript $TRANSCRIPT_PATH"
+            "command": "backstory capture"
           }
         ]
       }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/yaronya/backstory/internal/decision"
@@ -120,7 +121,19 @@ func (s *Store) QueryByAnchor(anchor string) ([]*decision.Decision, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanDecisions(rows)
+
+	all, err := scanDecisions(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]*decision.Decision, 0, len(all))
+	for _, d := range all {
+		if d.Anchor == anchor || d.Anchor == "" || strings.Count(d.Anchor, "/") >= 1 {
+			results = append(results, d)
+		}
+	}
+	return results, nil
 }
 
 func (s *Store) QueryByLinearIssue(issue string) ([]*decision.Decision, error) {

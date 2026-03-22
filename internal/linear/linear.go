@@ -83,7 +83,10 @@ func (c *Client) FetchIssue(ctx context.Context, identifier string) (*Issue, err
 	query := `query($filter: IssueFilter) {
   issues(filter: $filter, first: 1) {
     nodes {
-      id identifier title description
+      id
+      identifier
+      title
+      description
       comments { nodes { body user { name } } }
     }
   }
